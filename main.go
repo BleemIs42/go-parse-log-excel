@@ -28,6 +28,7 @@ func main() {
 	}
 }
 
+// mainTread = { timeKey: [datetime totalTime] }
 func matchMainThread(file string) map[string][]string {
 	timeKeyReg := regexp.MustCompile(`MAIN_(\w+)\]\s+time:(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3})`)
 	timeKeyMatched := timeKeyReg.FindAllStringSubmatch(file, -1)
@@ -53,6 +54,7 @@ func matchMainThread(file string) map[string][]string {
 	return mainTread
 }
 
+// subThread = { pid: { timeKey: [datetime totalTime] }}
 func matchSubThread(file string) map[string]map[string][]string {
 	timeKeyReg := regexp.MustCompile(`SUB_(\w+)_(\w+)\]\s+time:(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3})`)
 	timeKeyMatched := timeKeyReg.FindAllStringSubmatch(file, -1)
