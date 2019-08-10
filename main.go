@@ -19,17 +19,17 @@ func main() {
 
 		fmt.Println("-----")
 
-		subThread := matchSubThread(content)
-		for pid, keyDate := range subThread {
-			for key, date := range keyDate {
-				fmt.Println(pid, key, date)
-			}
-		}
+		// subThread := matchSubThread(content)
+		// for pid, keyDate := range subThread {
+		// 	for key, date := range keyDate {
+		// 		fmt.Println(pid, key, date)
+		// 	}
+		// }
 	}
 }
 
-// mainTread = { timeKey: [datetime totalTime] }
-func matchMainThread(file string) map[string][]string {
+// mainThread { timeKey: { date: date, total: total } }
+func matchMainThread(file string) map[string]map[string]string {
 	timeKeyReg := regexp.MustCompile(`MAIN_(\w+)\]\s+time:(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3})`)
 	timeKeyMatched := timeKeyReg.FindAllStringSubmatch(file, -1)
 
@@ -39,36 +39,41 @@ func matchMainThread(file string) map[string][]string {
 	timeKeyTotalReg := regexp.MustCompile(`(\w+):(\d+)`)
 	timeKeyTotalMatched := timeKeyTotalReg.FindAllStringSubmatch(timeKeyTotalLineMatched[1], -1)
 
-	mainTread := map[string][]string{}
+	mainTread := map[string]map[string]string{}
 	for _, keyDate := range timeKeyMatched {
-		mainTread[keyDate[1]] = []string{keyDate[2]}
-		fmt.Println(keyDate[1], mainTread[keyDate[1]])
+		key, date := keyDate[1], keyDate[2]
+		mainTread[key] = map[string]string{"date": date}
+		fmt.Println(key, mainTread[key])
 	}
 	fmt.Println("-----")
 
 	for _, keyTotal := range timeKeyTotalMatched {
 		key, total := keyTotal[1], keyTotal[2]
-		mainTread[key] = append(mainTread[key], total)
+		if _, ok := mainTread[key]; ok {
+			mainTread[key]["total"] = total
+		} else {
+			mainTread[key] = map[string]string{"total": total}
+		}
 	}
 
 	return mainTread
 }
 
-// subThread = { pid: { timeKey: [datetime totalTime] }}
-func matchSubThread(file string) map[string]map[string][]string {
+// subThread { pid: { date: date, total: total } }
+func matchSubThread(file string) map[string]map[string]map[string]string {
 	timeKeyReg := regexp.MustCompile(`SUB_(\w+)_(\w+)\]\s+time:(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3})`)
 	timeKeyMatched := timeKeyReg.FindAllStringSubmatch(file, -1)
 
-	subThread := map[string]map[string][]string{}
+	subThread := map[string]map[string]map[string]string{}
 	for _, pidKeyDate := range timeKeyMatched {
 		pid, key, date := pidKeyDate[1], pidKeyDate[2], pidKeyDate[3]
 		// fmt.Println(pid, key, date)
 		if _, pidOk := subThread[pid]; pidOk {
 			if _, keyOk := subThread[pid][key]; !keyOk {
-				subThread[pid][key] = []string{date}
+				subThread[pid][key] = map[string]string{"date": date}
 			}
 		} else {
-			subThread[pid] = map[string][]string{key: []string{date}}
+			subThread[pid] = map[string]map[string]string{key: {"date": date}}
 		}
 	}
 
@@ -82,7 +87,7 @@ func matchSubThread(file string) map[string]map[string][]string {
 		for _, keyTotal := range timeKeyTotalMatched {
 			key, total := keyTotal[1], keyTotal[2]
 			if _, ok := subThread[pid][key]; ok {
-				subThread[pid][key] = append(subThread[pid][key], total)
+				subThread[pid][key]["total"] = total
 			}
 		}
 	}
