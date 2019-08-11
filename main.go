@@ -4,9 +4,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"regexp"
+	"strconv"
+	"strings"
 
 	excelize "github.com/360EntSecGroup-Skylar/excelize/v2"
 )
+
+const SheetName string = "Sheet1"
+
+const ALPHABET string = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func main() {
 	file, err := ioutil.ReadFile(`./222.log`)
@@ -25,6 +31,16 @@ func main() {
 		// 		fmt.Println(pid, key, date)
 		// 	}
 		// }
+
+		f := excelize.NewFile()
+
+		// f.SetCellValue("Sheet1", "A1", "Hello world.")
+		createMainThreadPart(f, mainThread)
+
+		err := f.SaveAs("./log-parsed.xlsx")
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
@@ -95,13 +111,25 @@ func matchSubThread(file string) map[string]map[string]map[string]string {
 	return subThread
 }
 
-func createExcel() {
-	f := excelize.NewFile()
+func createMainThreadPart(f *excelize.File, mainThread map[string]map[string]string) {
 
-	f.SetCellValue("Sheet1", "A1", "Hello world.")
+	COL_NAME := strings.Split(ALPHABET, "")
 
-	err := f.SaveAs("./log-parsed.xlsx")
-	if err != nil {
-		fmt.Println(err)
+	for row, header := range MainHeaders {
+		var date, total string
+		date = mainThread[header.Key]["date"]
+		if date == "" {
+			date = mainThread[header.Key+"Time"]["date"]
+		}
+		total = mainThread[header.Key]["total"]
+		if total == "" {
+			total = mainThread[header.Key+"Time"]["total"]
+		}
+		fmt.Println(row+1, header.Name, total, date)
+
+		var cols = []string{header.Name, total, date}
+		for i := 0; i < 3; i++ {
+			f.SetCellValue(SheetName, COL_NAME[i]+strconv.Itoa(row+1), cols[i])
+		}
 	}
 }
