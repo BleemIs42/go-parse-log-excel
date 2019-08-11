@@ -25,22 +25,16 @@ func main() {
 
 		fmt.Println("-----")
 
-		// subThread := matchSubThread(content)
-		// for pid, keyDate := range subThread {
-		// 	for key, date := range keyDate {
-		// 		fmt.Println(pid, key, date)
-		// 	}
-		// }
-
-		f := excelize.NewFile()
-
-		// f.SetCellValue("Sheet1", "A1", "Hello world.")
-		createMainThreadPart(f, mainThread)
-
-		err := f.SaveAs("./log-parsed.xlsx")
-		if err != nil {
-			fmt.Println(err)
+		subThread := matchSubThread(content)
+		for ruleId, keyDate := range subThread {
+			for key, date := range keyDate {
+				if ruleId == "67972" {
+					fmt.Println(ruleId, key, date)
+				}
+			}
 		}
+		createTable(mainThread, subThread)
+
 	}
 }
 
@@ -75,35 +69,37 @@ func matchMainThread(file string) map[string]map[string]string {
 	return mainTread
 }
 
-// subThread { pid: { date: date, total: total } }
+// subThread { ruleId: { timeKey: { date: date, total: total } } }
 func matchSubThread(file string) map[string]map[string]map[string]string {
 	timeKeyReg := regexp.MustCompile(`SUB_(\w+)_(\w+)\]\s+time:(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3})`)
 	timeKeyMatched := timeKeyReg.FindAllStringSubmatch(file, -1)
 
 	subThread := map[string]map[string]map[string]string{}
-	for _, pidKeyDate := range timeKeyMatched {
-		pid, key, date := pidKeyDate[1], pidKeyDate[2], pidKeyDate[3]
-		// fmt.Println(pid, key, date)
-		if _, pidOk := subThread[pid]; pidOk {
-			if _, keyOk := subThread[pid][key]; !keyOk {
-				subThread[pid][key] = map[string]string{"date": date}
+	for _, ruleIdKeyDate := range timeKeyMatched {
+		ruleId, key, date := ruleIdKeyDate[1], ruleIdKeyDate[2], ruleIdKeyDate[3]
+		// fmt.Println(ruleId, key, date)
+		if _, ruleIdOk := subThread[ruleId]; ruleIdOk {
+			if _, keyOk := subThread[ruleId][key]; !keyOk {
+				subThread[ruleId][key] = map[string]string{"date": date}
 			}
 		} else {
-			subThread[pid] = map[string]map[string]string{key: {"date": date}}
+			subThread[ruleId] = map[string]map[string]string{key: {"date": date}}
 		}
 	}
 
 	timeTotalKeyLineReg := regexp.MustCompile(`.*SUB_TIME_(\d+)\S+\s(.*)`)
 	timeTotalKeyLineMatched := timeTotalKeyLineReg.FindAllStringSubmatch(file, -1)
 
-	timeKeyTotalReg := regexp.MustCompile(`(\w+):(\d+)`)
+	timeKeyTotalReg := regexp.MustCompile(`(\w+):([\d\w]+)`)
 	for _, keyTotalLineMatched := range timeTotalKeyLineMatched {
-		pid, keyTotalLine := keyTotalLineMatched[1], keyTotalLineMatched[2]
+		ruleId, keyTotalLine := keyTotalLineMatched[1], keyTotalLineMatched[2]
 		timeKeyTotalMatched := timeKeyTotalReg.FindAllStringSubmatch(keyTotalLine, -1)
 		for _, keyTotal := range timeKeyTotalMatched {
 			key, total := keyTotal[1], keyTotal[2]
-			if _, ok := subThread[pid][key]; ok {
-				subThread[pid][key]["total"] = total
+			if _, ok := subThread[ruleId][key]; ok {
+				subThread[ruleId][key]["total"] = total
+			} else {
+				subThread[ruleId][key] = map[string]string{"total": total}
 			}
 		}
 	}
@@ -111,7 +107,20 @@ func matchSubThread(file string) map[string]map[string]map[string]string {
 	return subThread
 }
 
-func createMainThreadPart(f *excelize.File, mainThread map[string]map[string]string) {
+func createTable(mainThread map[string]map[string]string, subThread map[string]map[string]map[string]string) {
+
+	f := excelize.NewFile()
+
+	createMainTable(f, mainThread)
+	createSubTable(f, subThread)
+
+	err := f.SaveAs("./log-parsed.xlsx")
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+func createMainTable(f *excelize.File, mainThread map[string]map[string]string) {
 
 	COL_NAME := strings.Split(ALPHABET, "")
 
@@ -125,11 +134,36 @@ func createMainThreadPart(f *excelize.File, mainThread map[string]map[string]str
 		if total == "" {
 			total = mainThread[header.Key+"Time"]["total"]
 		}
-		fmt.Println(row+1, header.Name, total, date)
 
 		var cols = []string{header.Name, total, date}
 		for i := 0; i < 3; i++ {
 			f.SetCellValue(SheetName, COL_NAME[i]+strconv.Itoa(row+1), cols[i])
 		}
 	}
+}
+
+func createSubTable(f *excelize.File, subThread map[string]map[string]map[string]string) {
+
+	COL_NAME := strings.Split(ALPHABET, "")
+	row := 20
+
+	f.SetCellValue(SheetName, COL_NAME[0]+strconv.Itoa(row), "RuleId")
+	for idx, col := range SubHeaders {
+		f.SetCellValue(SheetName, COL_NAME[idx+1]+strconv.Itoa(row), col)
+	}
+
+	for ruleId, _ := range subThread {
+
+		f.SetCellValue(SheetName, COL_NAME[0]+strconv.Itoa(row+1), ruleId)
+		for idx, col := range SubHeaders {
+			val := subThread[ruleId][col]["total"]
+			if val == "" {
+				val = subThread[ruleId][col]["date"]
+			}
+			f.SetCellValue(SheetName, COL_NAME[idx+1]+strconv.Itoa(row+1), val)
+		}
+
+		row++
+	}
+
 }

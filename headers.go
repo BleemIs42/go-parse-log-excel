@@ -5,6 +5,9 @@ import (
 	"fmt"
 )
 
+// "ruleId"
+var SubHeaders = []string{"areaCate", "subTotalTime", "START", "basicInfoTime", "preOpeTime", "checkDefectTime", "saveDefectTime", "sitoTime", "getGlassTime", "sheetTupleListTime", "redisRuleKeysTime", "getRuleBySheetsTime", "getSampCntTime", "checkRuleTime", "sendAlarmTime", "toFileCheckOutTime", "FINISH"}
+
 const mainHeaderJSON = `[
 	{
 		"Name": "主线程开始",
@@ -57,9 +60,7 @@ type MainHeader struct {
 	Key  string
 }
 
-var MainHeaders = GetMainHeader()
-
-func GetMainHeader() []MainHeader {
+func GetMainHeaders() []MainHeader {
 	var headers []MainHeader
 	err := json.Unmarshal([]byte(mainHeaderJSON), &headers)
 	if err != nil {
@@ -67,3 +68,5 @@ func GetMainHeader() []MainHeader {
 	}
 	return headers
 }
+
+var MainHeaders = GetMainHeaders()
