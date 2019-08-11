@@ -153,12 +153,13 @@ func createSubTable(f *excelize.File, subThread map[string]map[string]map[string
 	}
 
 	for ruleId, _ := range subThread {
-
 		f.SetCellValue(SheetName, COL_NAME[0]+strconv.Itoa(row+1), ruleId)
 		for idx, col := range SubHeaders {
 			val := subThread[ruleId][col]["total"]
 			if val == "" {
 				val = subThread[ruleId][col]["date"]
+			} else {
+				//TODO: max, min, avg, middle, more
 			}
 			f.SetCellValue(SheetName, COL_NAME[idx+1]+strconv.Itoa(row+1), val)
 		}
