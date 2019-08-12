@@ -26,15 +26,7 @@ func main() {
 		fmt.Println("-----")
 
 		subThread := matchSubThread(content)
-		for ruleId, keyDate := range subThread {
-			for key, date := range keyDate {
-				if ruleId == "67972" {
-					fmt.Println(ruleId, key, date)
-				}
-			}
-		}
 		createTable(mainThread, subThread)
-
 	}
 }
 
@@ -69,21 +61,21 @@ func matchMainThread(file string) map[string]map[string]string {
 	return mainTread
 }
 
-// subThread { ruleId: { timeKey: { date: date, total: total } } }
+// subThread { ruleID: { timeKey: { date: date, total: total } } }
 func matchSubThread(file string) map[string]map[string]map[string]string {
 	timeKeyReg := regexp.MustCompile(`SUB_(\w+)_(\w+)\]\s+time:(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3})`)
 	timeKeyMatched := timeKeyReg.FindAllStringSubmatch(file, -1)
 
 	subThread := map[string]map[string]map[string]string{}
-	for _, ruleIdKeyDate := range timeKeyMatched {
-		ruleId, key, date := ruleIdKeyDate[1], ruleIdKeyDate[2], ruleIdKeyDate[3]
-		// fmt.Println(ruleId, key, date)
-		if _, ruleIdOk := subThread[ruleId]; ruleIdOk {
-			if _, keyOk := subThread[ruleId][key]; !keyOk {
-				subThread[ruleId][key] = map[string]string{"date": date}
+	for _, ruleIDKeyDate := range timeKeyMatched {
+		ruleID, key, date := ruleIDKeyDate[1], ruleIDKeyDate[2], ruleIDKeyDate[3]
+		// fmt.Println(ruleID, key, date)
+		if _, ruleIDOk := subThread[ruleID]; ruleIDOk {
+			if _, keyOk := subThread[ruleID][key]; !keyOk {
+				subThread[ruleID][key] = map[string]string{"date": date}
 			}
 		} else {
-			subThread[ruleId] = map[string]map[string]string{key: {"date": date}}
+			subThread[ruleID] = map[string]map[string]string{key: {"date": date}}
 		}
 	}
 
@@ -92,14 +84,14 @@ func matchSubThread(file string) map[string]map[string]map[string]string {
 
 	timeKeyTotalReg := regexp.MustCompile(`(\w+):([\d\w]+)`)
 	for _, keyTotalLineMatched := range timeTotalKeyLineMatched {
-		ruleId, keyTotalLine := keyTotalLineMatched[1], keyTotalLineMatched[2]
+		ruleID, keyTotalLine := keyTotalLineMatched[1], keyTotalLineMatched[2]
 		timeKeyTotalMatched := timeKeyTotalReg.FindAllStringSubmatch(keyTotalLine, -1)
 		for _, keyTotal := range timeKeyTotalMatched {
 			key, total := keyTotal[1], keyTotal[2]
-			if _, ok := subThread[ruleId][key]; ok {
-				subThread[ruleId][key]["total"] = total
+			if _, ok := subThread[ruleID][key]; ok {
+				subThread[ruleID][key]["total"] = total
 			} else {
-				subThread[ruleId][key] = map[string]string{"total": total}
+				subThread[ruleID][key] = map[string]string{"total": total}
 			}
 		}
 	}
@@ -147,24 +139,101 @@ func createSubTable(f *excelize.File, subThread map[string]map[string]map[string
 	COL_NAME := strings.Split(ALPHABET, "")
 	row := 20
 
-	f.SetCellValue(SheetName, COL_NAME[0]+strconv.Itoa(row), "RuleId")
-	for idx, col := range SubHeaders {
-		f.SetCellValue(SheetName, COL_NAME[idx+1]+strconv.Itoa(row), col)
-	}
-
-	for ruleId, _ := range subThread {
-		f.SetCellValue(SheetName, COL_NAME[0]+strconv.Itoa(row+1), ruleId)
+	collections := map[string][]int{}
+	for ruleID := range subThread {
+		f.SetCellValue(SheetName, COL_NAME[0]+strconv.Itoa(row), ruleID)
 		for idx, col := range SubHeaders {
-			val := subThread[ruleId][col]["total"]
+			val := subThread[ruleID][col]["total"]
 			if val == "" {
-				val = subThread[ruleId][col]["date"]
+				val = subThread[ruleID][col]["date"]
 			} else {
-				//TODO: max, min, avg, middle, more
+				total, err := strconv.Atoi(val)
+				if err == nil {
+					if _, ok := collections[col]; ok {
+						collections[col] = append(collections[col], total)
+					} else {
+						collections[col] = []int{total}
+					}
+				}
 			}
-			f.SetCellValue(SheetName, COL_NAME[idx+1]+strconv.Itoa(row+1), val)
+			f.SetCellValue(SheetName, COL_NAME[idx+1]+strconv.Itoa(row), val)
 		}
 
 		row++
 	}
+	createStats(f, collections)
+}
 
+func createStats(f *excelize.File, collections map[string][]int) {
+	COL_NAME := strings.Split(ALPHABET, "")
+	row := 19
+	f.SetCellValue(SheetName, COL_NAME[0]+strconv.Itoa(row), "RuleID")
+	statsHeaders := []string{"max", "min", "avg", "mid", "more"}
+	for sidx, statsKey := range statsHeaders {
+		f.SetCellValue(SheetName, COL_NAME[0]+strconv.Itoa(row-1-sidx), statsKey)
+	}
+	for kidx, timeKey := range SubHeaders {
+		f.SetCellValue(SheetName, COL_NAME[kidx+1]+strconv.Itoa(row), timeKey)
+		stats := getStats(collections[timeKey])
+		for sidx, statsKey := range statsHeaders {
+			f.SetCellValue(SheetName, COL_NAME[kidx+1]+strconv.Itoa(row-1-sidx), stats[statsKey])
+		}
+	}
+}
+
+func getStats(arr []int) map[string]int {
+	if len(arr) == 0 {
+		return map[string]int{}
+	}
+	numMap := map[int][]int{}
+	avg := 0
+	for _, val := range arr {
+		avg += val
+		if _, ok := numMap[val]; ok {
+			numMap[val] = append(numMap[val], val)
+		} else {
+			numMap[val] = []int{val}
+		}
+	}
+	avg = avg / len(arr)
+
+	more, length := 0, 0
+	for key, val := range numMap {
+		if len(val) >= length {
+			length = len(val)
+			more = key
+		}
+	}
+
+	sorted := quickSort(arr)
+
+	return map[string]int{
+		"max":  sorted[len(sorted)-1],
+		"min":  sorted[0],
+		"avg":  avg,
+		"mid":  sorted[len(sorted)/2],
+		"more": more,
+	}
+}
+
+func quickSort(arr []int) []int {
+	if len(arr) <= 1 {
+		return arr
+	}
+
+	midIndex := len(arr) / 2
+	mid := arr[midIndex]
+	arr = append(arr[:midIndex], arr[midIndex+1:]...)
+
+	var leftArr, rightArr []int
+	for _, val := range arr {
+		if val < mid {
+			leftArr = append(leftArr, val)
+		} else {
+			rightArr = append(rightArr, val)
+		}
+	}
+
+	result := append(append(quickSort(leftArr), mid), quickSort(rightArr)...)
+	return result
 }
