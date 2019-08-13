@@ -18,7 +18,7 @@ const LOG_PARSED string = "./log-parsed.xlsx"
 const ALPHABET string = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func main() {
-	logPath, pathErr := dialog.File().Load()
+	logPath, pathErr := dialog.File().Title("请选择日志文件").Filter("Log/Text file", "log", "txt").Load()
 	if pathErr != nil {
 		logPath = "./222.log"
 	}
@@ -27,11 +27,6 @@ func main() {
 	if readErr == nil {
 		content := string(file)
 		mainThread := matchMainThread(content)
-		for key, dateTotal := range mainThread {
-			fmt.Println(key, dateTotal)
-		}
-
-		fmt.Println("-----")
 
 		subThread := matchSubThread(content)
 		createTable(mainThread, subThread)
@@ -45,8 +40,13 @@ func main() {
 
 // mainThread { timeKey: { date: date, total: total } }
 func matchMainThread(file string) map[string]map[string]string {
+	mainTread := map[string]map[string]string{}
+
 	timeKeyReg := regexp.MustCompile(`MAIN_(\w+)\]\s+time:(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}.\d{3})`)
 	timeKeyMatched := timeKeyReg.FindAllStringSubmatch(file, -1)
+	if len(timeKeyMatched) == 0 {
+		return mainTread
+	}
 
 	timeKeyTotalLineReg := regexp.MustCompile(`.*MAIN_TIME.*\s(\S+)`)
 	timeKeyTotalLineMatched := timeKeyTotalLineReg.FindStringSubmatch(file)
@@ -54,13 +54,10 @@ func matchMainThread(file string) map[string]map[string]string {
 	timeKeyTotalReg := regexp.MustCompile(`(\w+):(\d+)`)
 	timeKeyTotalMatched := timeKeyTotalReg.FindAllStringSubmatch(timeKeyTotalLineMatched[1], -1)
 
-	mainTread := map[string]map[string]string{}
 	for _, keyDate := range timeKeyMatched {
 		key, date := keyDate[1], keyDate[2]
 		mainTread[key] = map[string]string{"date": date}
-		fmt.Println(key, mainTread[key])
 	}
-	fmt.Println("-----")
 
 	for _, keyTotal := range timeKeyTotalMatched {
 		key, total := keyTotal[1], keyTotal[2]
@@ -82,7 +79,6 @@ func matchSubThread(file string) map[string]map[string]map[string]string {
 	subThread := map[string]map[string]map[string]string{}
 	for _, ruleIDKeyDate := range timeKeyMatched {
 		ruleID, key, date := ruleIDKeyDate[1], ruleIDKeyDate[2], ruleIDKeyDate[3]
-		// fmt.Println(ruleID, key, date)
 		if _, ruleIDOk := subThread[ruleID]; ruleIDOk {
 			if _, keyOk := subThread[ruleID][key]; !keyOk {
 				subThread[ruleID][key] = map[string]string{"date": date}
@@ -121,7 +117,7 @@ func createTable(mainThread map[string]map[string]string, subThread map[string]m
 
 	err := f.SaveAs(LOG_PARSED)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("保存失败: ", err)
 	}
 }
 
