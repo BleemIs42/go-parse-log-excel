@@ -185,22 +185,22 @@ func getStats(arr []int) map[string]int {
 	if len(arr) == 0 {
 		return map[string]int{}
 	}
-	numMap := map[int][]int{}
+	numMap := map[int]int{}
 	avg := 0
 	for _, val := range arr {
 		avg += val
-		if _, ok := numMap[val]; ok {
-			numMap[val] = append(numMap[val], val)
+		if num, ok := numMap[val]; ok {
+			numMap[val] = num + 1
 		} else {
-			numMap[val] = []int{val}
+			numMap[val] = 1
 		}
 	}
 	avg = avg / len(arr)
 
 	more, length := 0, 0
 	for key, val := range numMap {
-		if len(val) >= length {
-			length = len(val)
+		if val >= length {
+			length = val
 			more = key
 		}
 	}
