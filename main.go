@@ -8,10 +8,12 @@ import (
 	"strings"
 
 	excelize "github.com/360EntSecGroup-Skylar/excelize/v2"
+	"github.com/skratchdot/open-golang/open"
 	"github.com/sqweek/dialog"
 )
 
 const SheetName string = "Sheet1"
+const LOG_PARSED string = "./log-parsed.xlsx"
 
 const ALPHABET string = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -33,6 +35,11 @@ func main() {
 
 		subThread := matchSubThread(content)
 		createTable(mainThread, subThread)
+
+		openErr := open.Start(LOG_PARSED)
+		if openErr != nil {
+			open.StartWith(LOG_PARSED, "Microsoft Excel")
+		}
 	}
 }
 
@@ -112,7 +119,7 @@ func createTable(mainThread map[string]map[string]string, subThread map[string]m
 	createMainTable(f, mainThread)
 	createSubTable(f, subThread)
 
-	err := f.SaveAs("./log-parsed.xlsx")
+	err := f.SaveAs(LOG_PARSED)
 	if err != nil {
 		fmt.Println(err)
 	}
