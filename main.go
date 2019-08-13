@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	excelize "github.com/360EntSecGroup-Skylar/excelize/v2"
+	"github.com/sqweek/dialog"
 )
 
 const SheetName string = "Sheet1"
@@ -15,8 +16,13 @@ const SheetName string = "Sheet1"
 const ALPHABET string = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func main() {
-	file, err := ioutil.ReadFile(`./222.log`)
-	if err == nil {
+	logPath, pathErr := dialog.File().Load()
+	if pathErr != nil {
+		logPath = "./222.log"
+	}
+
+	file, readErr := ioutil.ReadFile(logPath)
+	if readErr == nil {
 		content := string(file)
 		mainThread := matchMainThread(content)
 		for key, dateTotal := range mainThread {
