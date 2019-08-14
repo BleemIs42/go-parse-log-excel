@@ -27,8 +27,8 @@ func main() {
 	if readErr == nil {
 		content := string(file)
 		mainThread := matchMainThread(content)
-
 		subThread := matchSubThread(content)
+
 		createTable(mainThread, subThread)
 
 		openErr := open.Start(LOG_PARSED)
